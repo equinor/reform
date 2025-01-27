@@ -8,6 +8,10 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
+      # https://discourse.ubuntu.com/t/ubuntu-24-04-lts-noble-numbat-release-notes/39890#p-99950-unprivileged-user-namespace-restrictions
+      - name: Enable unpriveleged userns
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: Checkout
         uses: actions/checkout@v4
 
