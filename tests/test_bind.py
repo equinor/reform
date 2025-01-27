@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 import os
-from typing import TypeVar
 import pytest
 from pathlib import Path
 from reform.bind import Bind, BindNode, MkdirNode, merge_bindings

@@ -1,4 +1,4 @@
-name: Nix tests
+name: Python tests
 
 on:
   pull_request:
@@ -29,11 +29,11 @@ jobs:
 
       - name: Check format & lint
         run: |
-          ruff format --check
-          ruff check
+          poetry run ruff format --check
+          poetry run ruff check
 
       - name: Typecheck
-        run: mypy --strict src
+        run: poetry run mypy --strict src
 
       - name: Run tests
-        run: pytest tests
+        run: poetry run pytest tests
