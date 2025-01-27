@@ -1,0 +1,8 @@
+.venv/
+venv/
+
+.direnv/
+result
+
+# Don't push flake.lock. Normally this is not a good idea, but I don't want to keep updating it, so whatever.
+flake.lock
