@@ -2,7 +2,12 @@ from collections.abc import Iterable
 import os
 import pytest
 from pathlib import Path
-from reform.bind import Bind, BindNode, DirNode, merge_bindings
+from reform.bind import Bind, BindNode, DirNode, LinkNode, merge_bindings
+
+
+@pytest.fixture(autouse=True)
+def islink(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(Path, "is_symlink", lambda self: False)
 
 
 @pytest.fixture
@@ -122,5 +127,31 @@ def test_bind_subsubdir_empty(monkeypatch):
             "bin": BindNode(Path("/bin")),
             "usr": BindNode(Path("/usr")),
             "foo": DirNode({"bar": DirNode({"quz": DirNode({})})}),
+        }
+    )
+
+
+def test_bind_with_symlink(monkeypatch):
+    def listdir(_):
+        yield from ("bin", "usr", "lib")
+
+    def is_symlink(self):
+        return self == Path("/lib")
+
+    def readlink(self):
+        return Path("fake/link")
+
+    monkeypatch.setattr(os, "listdir", listdir)
+    monkeypatch.setattr(Path, "is_symlink", is_symlink)
+    monkeypatch.setattr(Path, "readlink", readlink)
+    assert merge_bindings(
+        {
+            "/": Bind(exclude="prog"),
+        }
+    ) == DirNode(
+        {
+            "bin": BindNode(Path("/bin")),
+            "usr": BindNode(Path("/usr")),
+            "lib": LinkNode(Path("fake/link")),
         }
     )

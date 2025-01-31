@@ -30,6 +30,11 @@ class DirNode(Node):
 
 
 @dataclass
+class LinkNode(Node):
+    target: Path
+
+
+@dataclass
 class BindNode(Node):
     source: Path
     allow_writes: bool = False
@@ -55,6 +60,8 @@ def _perform(node: Node, path: Path, chroot_dir: Path) -> None:
     if isinstance(node, DirNode):
         if in_chroot_path != chroot_dir:
             in_chroot_path.mkdir()
+    elif isinstance(node, LinkNode):
+        in_chroot_path.symlink_to(node.target)
     elif isinstance(node, BindNode):
         mount_flags = libc.MS_BIND | libc.MS_REC | libc.MS_PRIVATE
         if not node.allow_writes:
@@ -79,7 +86,9 @@ def _listdir_nodes(path: Path, exclude: Iterable[str] = ()) -> dict[str, Node]:
         if name in exclude:
             continue
         subpath = path / name
-        if subpath.is_dir():
+        if subpath.is_symlink():
+            nodes[name] = LinkNode(subpath.readlink())
+        elif subpath.is_dir():
             nodes[name] = BindNode(subpath)
         else:
             print(f"Warning: Could not bind {subpath}")
