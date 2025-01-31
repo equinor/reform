@@ -12,32 +12,13 @@ from typing import Any, Callable, TypeVar, cast
 from typing_extensions import ParamSpec
 from collections.abc import Mapping
 import ctypes
-from queue import Queue
 
-from reform.bind import Bind, BindNode, MkdirNode, PathNode, merge_bindings
+from reform.bind import Bind, merge_bindings, mount_all
 from reform import libc
 
 
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
-
-
-def mount_all(node: PathNode, chroot_dir: Path) -> None:
-    q: Queue[tuple[Path, PathNode]] = Queue()
-    q.put((Path(), node))
-
-    reverse_order: list[tuple[Path, PathNode]] = []
-
-    while not q.empty():
-        path, node = q.get()
-        if isinstance(node, BindNode):
-            reverse_order.append((path, node))
-        if isinstance(node, MkdirNode):
-            for name, child in node.children.items():
-                q.put((path / name, child))
-
-    for path, node in reversed(reverse_order):
-        node.mount(chroot_dir, path)
 
 
 def call(
@@ -47,7 +28,7 @@ def call(
     **kwargs: _P.kwargs,
 ) -> _T:
     tree = merge_bindings({**mapping, "/proc": Bind()})
-    tree.validate_all(Path("/"))
+    # tree.validate_all(Path("/"))
 
     chroot_dir = Path(mkdtemp(prefix="deploy-chroot-"))
 

@@ -34,10 +34,9 @@ _libc.mount.argtypes = (
 
 def mount(
     source: Path, target: Path, filesystemtype: Literal[b"none"], mountflags: int
-) -> int:
-    return cast(
-        int, _libc.mount(bytes(source), bytes(target), filesystemtype, mountflags, None)
-    )
+) -> None:
+    if _libc.mount(bytes(source), bytes(target), filesystemtype, mountflags, None) != 0:
+        raise OSError(f"Failure when mounting {source} to {target}: {get_error()}")
 
 
 def get_error() -> str:

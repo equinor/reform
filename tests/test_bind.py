@@ -2,7 +2,7 @@ from collections.abc import Iterable
 import os
 import pytest
 from pathlib import Path
-from reform.bind import Bind, BindNode, MkdirNode, merge_bindings
+from reform.bind import Bind, BindNode, DirNode, merge_bindings
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def listdir(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_bind_none():
-    assert merge_bindings({}) == MkdirNode()
+    assert merge_bindings({}) == DirNode({})
 
 
 def test_bind_root(monkeypatch):
@@ -22,7 +22,7 @@ def test_bind_root(monkeypatch):
 
 
 def test_bind_single_dir(monkeypatch):
-    assert merge_bindings({"/bin": Bind()}) == MkdirNode(
+    assert merge_bindings({"/bin": Bind()}) == DirNode(
         children={"bin": BindNode(Path("/bin"))}
     )
 
@@ -33,9 +33,10 @@ def test_bind_node_with_target():
 
 def test_bind_node_exclude_with_target(monkeypatch):
     monkeypatch.setattr(os, "listdir", lambda _: ("bin", "etc", "usr"))
+    monkeypatch.setattr(Path, "is_dir", lambda self: True)
 
-    assert merge_bindings({"/": Bind(Path.cwd(), exclude="bin")}) == MkdirNode(
-        children={
+    assert merge_bindings({"/": Bind(Path.cwd(), exclude="bin")}) == DirNode(
+        {
             "etc": BindNode(Path.cwd() / "etc"),
             "usr": BindNode(Path.cwd() / "usr"),
         }
@@ -48,9 +49,9 @@ def test_bind_manual_exclude(monkeypatch: pytest.MonkeyPatch):
 
     setup = {"/": Bind(), "/bin": Bind(empty=True)}
 
-    assert merge_bindings(setup) == MkdirNode(
-        children={
-            "bin": MkdirNode(),
+    assert merge_bindings(setup) == DirNode(
+        {
+            "bin": DirNode({}),
             "etc": BindNode(Path("/etc")),
             "usr": BindNode(Path("/usr")),
         }
@@ -60,8 +61,8 @@ def test_bind_manual_exclude(monkeypatch: pytest.MonkeyPatch):
 def test_bind_exclude(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(os, "listdir", lambda _: ("bin", "etc", "usr"))
 
-    assert merge_bindings({"/": Bind(exclude="etc")}) == MkdirNode(
-        children={"bin": BindNode(Path("/bin")), "usr": BindNode(Path("/usr"))}
+    assert merge_bindings({"/": Bind(exclude="etc")}) == DirNode(
+        {"bin": BindNode(Path("/bin")), "usr": BindNode(Path("/usr"))}
     )
 
 
@@ -73,12 +74,12 @@ def test_bind_exclude_subdir(monkeypatch):
         "/usr": Bind(exclude="usr"),
     }
 
-    assert merge_bindings(setup) == MkdirNode(
-        children={
+    assert merge_bindings(setup) == DirNode(
+        {
             "bin": BindNode(Path("/bin")),
             "etc": BindNode(Path("/etc")),
-            "usr": MkdirNode(
-                children={
+            "usr": DirNode(
+                {
                     "bin": BindNode(Path("/usr/bin")),
                     "etc": BindNode(Path("/usr/etc")),
                 }
@@ -97,11 +98,11 @@ def test_bind_subdir_empty(monkeypatch):
             "/": Bind(),
             "/foo": Bind(empty=True),
         }
-    ) == MkdirNode(
-        children={
+    ) == DirNode(
+        {
             "bin": BindNode(Path("/bin")),
             "usr": BindNode(Path("/usr")),
-            "foo": MkdirNode(),
+            "foo": DirNode({}),
         }
     )
 
@@ -116,12 +117,10 @@ def test_bind_subsubdir_empty(monkeypatch):
             "/": Bind(),
             "/foo/bar/quz": Bind(empty=True),
         }
-    ) == MkdirNode(
-        children={
+    ) == DirNode(
+        {
             "bin": BindNode(Path("/bin")),
             "usr": BindNode(Path("/usr")),
-            "foo": MkdirNode(
-                children={"bar": MkdirNode(children={"quz": MkdirNode()})}
-            ),
+            "foo": DirNode({"bar": DirNode({"quz": DirNode({})})}),
         }
     )
